@@ -64,7 +64,7 @@ stages:
     - powershell: |
         $product = "${{ parameters.BrowserName }}"
         $major = "${{ parameters.BrowserVersion }}"
-        Write-Host "Searching versions of $product"
+        Write-Host "Searching versions $major of $product"
         $versions = choco list "$product" --all-versions -r
         $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_.Major -eq $major } | Sort-Object -Descending | Select-Object -First 1
         if($version) {
