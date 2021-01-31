@@ -28,9 +28,6 @@ trigger:
     include:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
 
-pool:
-  vmImage: 'windows-latest'
-
 variables:
   buildConfiguration: 'Release'
 
@@ -40,6 +37,8 @@ stages:
   jobs:
   - job: Build
     displayName: Build
+    pool:
+      vmImage: 'windows-latest'
     steps:
     - task: SonarCloudPrepare@1
       displayName: Prepae SonarCloud analysis
@@ -100,6 +99,8 @@ stages:
   jobs:
   - job: Publish
     displayName: Publish
+    pool:
+      vmImage: 'windows-latest'
     steps:
     - checkout: none
     - download: current
