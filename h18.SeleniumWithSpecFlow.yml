@@ -17,6 +17,11 @@ parameters:
   type: string
 - name: NuGetConnection
   type: string
+- name: BrowserName # choco package
+  type: string
+- name: BrowserVersion # major number only
+  type: number
+
 
 trigger:
   branches:
@@ -54,6 +59,15 @@ stages:
         command: 'build'
         arguments: '--no-restore -p:Version=$(Build.BuildNumber) -p:AssemblyVersion=$(Build.BuildNumber) -p:FileVersion=$(Build.BuildNumber) -p:AssemblyInformationalVersionAttribute="GitHub_Commit-$(Build.SourceVersion)'
         workingDirectory: 'src/'
+    - powershell: |
+        $product = "${{ parameters.BrowserName }}"
+        $major = "${{ parameters.BrowserVersion }}"
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+        $versions = choco list "$product" --all-versions -r
+        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_ -like "$major*" } | Sort-Object -Descending | Select-Object -First 1
+        choco list $product --version "$version"
+        choco upgrade $product --version "$version" --force --no-progress --noop --confirm --allow-downgrade    
+      displayName: Install browser
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
       inputs:
