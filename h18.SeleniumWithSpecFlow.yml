@@ -65,8 +65,12 @@ stages:
         Write-Host "Searching versions of $product"
         $versions = choco list "$product" --all-versions -r
         $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_ -like "$major*" } | Sort-Object -Descending | Select-Object -First 1
-        Write-Host "Installing $product $version"
-        choco upgrade $product --version "$version" --force --no-progress --confirm --allow-downgrade    
+        Write-Host "Installing $product v$version"
+        if($version){
+          choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
+        } else {
+          $versions | Write-Host
+        }
       displayName: Install browser
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
