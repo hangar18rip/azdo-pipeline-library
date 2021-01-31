@@ -40,20 +40,6 @@ stages:
     pool:
       vmImage: 'windows-latest'
     steps:
-    - powershell: |
-        $product = "${{ parameters.BrowserName }}"
-        $major = "${{ parameters.BrowserVersion }}"
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-        Write-Host "Searching versions of $product"
-        $versions = choco list "$product" --all-versions -r
-        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_ -like "$major*" } | Sort-Object -Descending | Select-Object -First 1
-        Write-Host "Installing $product v$version"
-        if($version){
-          choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
-        } else {
-          $versions | Write-Host
-        }
-      displayName: Install browser
     - task: SonarCloudPrepare@1
       displayName: Prepare SonarCloud analysis
       inputs:
@@ -72,7 +58,16 @@ stages:
         command: 'build'
         arguments: '--no-restore -p:Version=$(Build.BuildNumber) -p:AssemblyVersion=$(Build.BuildNumber) -p:FileVersion=$(Build.BuildNumber) -p:AssemblyInformationalVersionAttribute="GitHub_Commit-$(Build.SourceVersion)'
         workingDirectory: 'src/'
-
+    - powershell: |
+        $product = "${{ parameters.BrowserName }}"
+        $major = "${{ parameters.BrowserVersion }}"
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+        Write-Host "Searching versions of $product"
+        $versions = choco list "$product" --all-versions -r
+        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_ -like "$major*" } | Sort-Object -Descending | Select-Object -First 1
+        Write-Host "Installing $product v$version"
+        choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
+      displayName: Install browser
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
       inputs:
