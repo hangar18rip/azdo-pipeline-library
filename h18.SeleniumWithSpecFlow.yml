@@ -41,7 +41,7 @@ stages:
       vmImage: 'windows-latest'
     steps:
     - task: SonarCloudPrepare@1
-      displayName: Prepae SonarCloud analysis
+      displayName: Prepare SonarCloud analysis
       inputs:
         SonarCloud: ${{ parameters.SonarCloudConnection }}
         organization: ${{ parameters.SonarCloudOrganization }}
