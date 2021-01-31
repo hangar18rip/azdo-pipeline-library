@@ -59,9 +59,11 @@ stages:
         arguments: '--no-restore -p:Version=$(Build.BuildNumber) -p:AssemblyVersion=$(Build.BuildNumber) -p:FileVersion=$(Build.BuildNumber) -p:AssemblyInformationalVersionAttribute="GitHub_Commit-$(Build.SourceVersion)'
         workingDirectory: 'src/'
     - powershell: |
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+      displayName: Install Chocolatey
+    - powershell: |
         $product = "${{ parameters.BrowserName }}"
         $major = "${{ parameters.BrowserVersion }}"
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
         Write-Host "Searching versions of $product"
         $versions = choco list "$product" --all-versions -r
         $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_.Major -eq $major } | Sort-Object -Descending | Select-Object -First 1
