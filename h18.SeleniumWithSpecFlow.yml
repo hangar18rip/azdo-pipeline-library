@@ -64,9 +64,12 @@ stages:
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
         Write-Host "Searching versions of $product"
         $versions = choco list "$product" --all-versions -r
-        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_ -like "$major*" } | Sort-Object -Descending | Select-Object -First 1
-        Write-Host "Installing $product v$version"
-        choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
+        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_.Major -eq $major } | Sort-Object -Descending | Select-Object -First 1
+        if($version) {
+          choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
+        } else {
+          throw "Unable to get the desired version"
+        }
       displayName: Install browser
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
