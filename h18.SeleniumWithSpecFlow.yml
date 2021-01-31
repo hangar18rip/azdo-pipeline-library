@@ -19,8 +19,10 @@ parameters:
   type: string
 - name: BrowserName # choco package
   type: string
+  default: ''
 - name: BrowserVersion # major number only
   type: number
+  default: '1'
 
 
 trigger:
@@ -58,21 +60,23 @@ stages:
         command: 'build'
         arguments: '--no-restore -p:Version=$(Build.BuildNumber) -p:AssemblyVersion=$(Build.BuildNumber) -p:FileVersion=$(Build.BuildNumber) -p:AssemblyInformationalVersionAttribute="GitHub_Commit-$(Build.SourceVersion)'
         workingDirectory: 'src/'
-    - powershell: |
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-      displayName: Install Chocolatey
-    - powershell: |
-        $product = "${{ parameters.BrowserName }}"
-        $major = "${{ parameters.BrowserVersion }}"
-        Write-Host "Searching versions $major of $product"
-        $versions = choco list "$product" --all-versions -r
-        $version = $versions | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_.Major -eq $major } | Sort-Object -Descending | Select-Object -First 1
-        if($version) {
-          choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
-        } else {
-          throw "Unable to get the desired version"
-        }
-      displayName: Install browser
+    # Chocolatey issue with Microsoft Edge
+    # - powershell: |
+    #     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    #   displayName: Install Chocolatey
+    # - powershell: |
+    #     $product = "${{ parameters.BrowserName }}"
+    #     $major = "${{ parameters.BrowserVersion }}"
+    #     Write-Host "Searching versions $major of $product"
+    #     $versions = choco list "$product" --all-versions -r
+    #     $version = $versions | Where-Object { $_.StartsWith("$($product)|")} | ForEach-Object { $stringVer = $_.Split("|", [System.StringSplitOptions]::RemoveEmptyEntries)[1] ; New-Object Version $stringVer } | Where-Object { $_.Major -eq $major } | Sort-Object -Descending | Select-Object -First 1
+    #     if($version) {
+    #       Write-Host "Installing $product $version"
+    #       choco upgrade $product --force --no-progress --confirm --allow-downgrade --version "$version"
+    #     } else {
+    #       throw "Unable to get the desired version"
+    #     }
+    #   displayName: Install browser
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
       inputs:
