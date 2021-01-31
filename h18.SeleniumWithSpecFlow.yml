@@ -1,0 +1,99 @@
+# This template is used to build the NuGet packages for the Selenium with Specflow packages I have published
+#
+# Base : https://github.com/hangar18rip/h18.SeleniumWithSpecFlow
+# Chrome : https://github.com/hangar18rip/h18.SeleniumWithSpecFlow.Chrome
+# Edge : https://github.com/hangar18rip/h18.SeleniumWithSpecFlow.Edge
+#
+
+
+parameters:
+- name: SonarCloudConnection
+  type: string
+- name: SonarCloudOrganization
+  type: string
+- name: SonarCloudProjectKey
+  type: string
+- name: SonarCloudProjectName
+  type: string
+- name: NuGetConnection
+  type: string
+
+trigger:
+  branches:
+    include:
+    - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: Build
+    displayName: Build
+    steps:
+    - task: SonarCloudPrepare@1
+      displayName: Prepae SonarCloud analysis
+      inputs:
+        SonarCloud: ${{ parameters.SonarCloudConnection }}
+        organization: ${{ parameters.SonarCloudOrganization }}
+        scannerMode: 'MSBuild'
+        projectKey: ${{ parameters.SonarCloudProjectKey }}
+        projectName: ${{ parameters.SonarCloudProjectName }}
+        projectVersion: $(Build.BuildNumber)
+    - script: dotnet restore
+      workingDirectory: src/
+      displayName: 'dotnet restore'
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build $(buildConfiguration)'
+      inputs:
+        command: 'build'
+        arguments: '--no-restore -p:Version=$(Build.BuildNumber) -p:AssemblyVersion=$(Build.BuildNumber) -p:FileVersion=$(Build.BuildNumber) -p:AssemblyInformationalVersionAttribute="GitHub_Commit-$(Build.SourceVersion)'
+        workingDirectory: 'src/'
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test'
+      inputs:
+        command: 'test'
+        arguments: '--no-restore --no-build --verbosity normal --collect "Code coverage"'
+        testRunTitle: 'Unit Tests'
+        workingDirectory: 'src/'
+    - task: SonarCloudAnalyze@1
+      displayName: Run SonarCloud analysis
+    - task: SonarCloudPublish@1
+      displayName: Wait for SonarCloud analysis
+      inputs:
+        pollingTimeoutSec: '300'
+    - task: CopyFiles@2
+      displayName: Create artifact
+      inputs:
+        SourceFolder: 'src/'
+        Contents: '**/*.nupkg'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/nuget'
+        flattenFolders: true
+    - task: PublishPipelineArtifact@1
+      displayName: Publish artifact
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/nuget'
+        artifact: 'nuget'
+        publishLocation: 'pipeline'
+- stage: Publish
+  displayName: Publish
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  jobs:
+  - job: Publish
+    displayName: Publish
+    steps:
+    - checkout: none
+    - download: current
+      artifact: nuget
+    - task: NuGetCommand@2
+      displayName: 'NuGet push'
+      inputs:
+        command: push
+        nuGetFeedType: external
+        packagesToPush: '$(Pipeline.Workspace)/nuget/*.nupkg;!$(Pipeline.Workspace)/nuget/*.symbols.nupkg'
+        publishFeedCredentials: ${{ parameters.NuGetConnection }}
